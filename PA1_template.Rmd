@@ -1,25 +1,99 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research - peer assesment 1"
+author: "Kees Wouters"
+date: "Friday, April 10, 2015"
+output: html_document
 ---
 
+The activity monitoring data in the file activity.zip has 3 columns:
 
-## Loading and preprocessing the data
+- steps: number of steps in a 5-minute interval
+- date: date on which the measurement was taken
+- interval: identifier for the 5-minute interval (i.e. starting time of interval)
+
+The head of the dataset is shown below.
+```{r echo=FALSE}
+data <- read.csv(unz("activity.zip", "activity.csv"))
+head(data)
+```
+
+Below the distribution of the total number of steps per day is shown in a histogram
+
+```{r echo=FALSE}
+steps_per_day <- aggregate(data$steps, list(date = as.Date(data$date)), sum)
+hist(as.numeric(na.omit(steps_per_day$x)),xlab="steps per day",
+     main="Distribution of steps per day")
+mean_steps <- as.integer(mean(na.omit(steps_per_day$x)))
+median_steps <- median(na.omit(steps_per_day$x))
+```
+
+The mean number of steps per day   : `r mean_steps`  
+The median number of steps per day : `r median_steps`
+
+Below a timeplot is given for the average steps per interval over the days in the dataset
+
+```{r echo=FALSE}
+average_steps <- aggregate(steps ~ interval, data, mean, na.action = na.omit)
+plot(average_steps, type="l")
+max_interval <- average_steps[which.max(average_steps$steps),1]
+```
+
+The interval with on average the maximum number of steps is `r max_interval`
+
+```{r echo=FALSE}
+nrmissing <- sum(complete.cases(data) == FALSE)
+```
+
+In the dataset, there are `r nrmissing` rows which are incomplete
+
+To complete the dataset, the average number of steps for the interval is used
+
+```{r echo=FALSE}
+data2 <- data       # copy original in data2 which will be completed
+for (i in 1:length(data2$steps)) 
+    if (is.na(data2$steps[i])) 
+        data2$steps[i] <- average_steps$steps[average_steps$interval == data2$interval[i]]
+```
+
+Below the distribution of the total number of steps per day for the completed dataset is shown in a histogram
+
+```{r echo=FALSE}
+steps_per_day2 <- aggregate(data2$steps, list(date = as.Date(data2$date)), sum)
+hist(as.numeric(na.omit(steps_per_day2$x)),xlab="steps per day",
+     main="Distribution of steps per day for the completed dataset")
+mean_steps2 <- as.integer(mean(na.omit(steps_per_day2$x)))
+median_steps2 <- median(na.omit(steps_per_day2$x))
+```
+
+The mean number of steps per day for the completed dataset   : `r mean_steps`  
+The median number of steps per day for the completed dataset : `r median_steps`
+
+The mean and median are not changed.
+Completing the dataset with the current distribution per day has no effect on the estimates per day. The distribution of the steps per day is changed as the added data results in additional days with the mean number of steps, making the distribution of steps per day narrower.
+
+```{r echo=FALSE}
+daytypef <- function(x) {if (is.element(weekdays(as.Date(x), TRUE),c("Sat","Sun"))) "weekend" else "weekday"}
+
+data2$daytype <- NA
+for (i in 1:length(data2$date)) data2$daytype[i] <- daytypef(data2$date[i])
+
+library(dplyr)
+
+average_steps_e <- aggregate(steps ~ interval , filter(data2, daytype == "weekend"), mean, na.action = na.omit)
+average_steps_e$daytype <- "weekend"
+average_steps_w <- aggregate(steps ~ interval , filter(data2, daytype == "weekday"), mean, na.action = na.omit)
+average_steps_w$daytype <- "weekday"
+
+average_steps_d <- rbind(average_steps_e, average_steps_w)
+average_steps_d$daytype <- as.factor(average_steps_d$daytype)
+
+library(lattice)
+
+xyplot(steps ~ interval | daytype, data = average_steps_d, layout = c(1,2),type = 'l')
 
 
 
-## What is mean total number of steps taken per day?
 
 
 
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+```
